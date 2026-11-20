@@ -1,0 +1,12 @@
+{
+  "name": "Für Mia",
+  "short_name": "Für Mia",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#B84FD6",
+  "theme_color": "#B84FD6",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

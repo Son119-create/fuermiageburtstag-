@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Für Mia</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Für Mia">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#B84FD6">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: linear-gradient(135deg, #FF5E94, #B84FD6 55%, #4A3AA8);
+    color: #fff; font-family: -apple-system, "SF Pro Rounded", system-ui, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  .page {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 24px;
+    padding-top: calc(24px + env(safe-area-inset-top)); padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    z-index: 1; transition: opacity .5s;
+  }
+  .hidden { opacity: 0; pointer-events: none; }
+  .cake { font-size: 84px; animation: pop .7s cubic-bezier(.2,1.6,.4,1) both; }
+  h1 {
+    margin: 10px 0 0; font-size: 44px; line-height: 1.08; font-weight: 900;
+    text-shadow: 0 3px 12px rgba(0,0,0,.3); animation: pop .8s .15s cubic-bezier(.2,1.6,.4,1) both;
+  }
+  .hint { margin-top: 36px; font-size: 15px; opacity: .85; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .install {
+    margin-top: 32px; background: rgba(255,255,255,.18); border-radius: 22px; padding: 16px 18px;
+    max-width: 340px; font-size: 15px; line-height: 1.5; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .install b { font-size: 16px; }
+  .share { display: inline-block; border: 1.5px solid #fff; border-radius: 5px; padding: 0 5px; font-size: 13px; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- Gruß (Safari + allererster Start vom Home-Bildschirm) -->
+<div class="page hidden" id="greet">
+  <div class="cake">🎂</div>
+  <h1>Happy Birthday,<br>Mia!</h1>
+  <div class="install" id="install" style="display:none">
+    <b>🎉 Hol dir die Konfettibombe!</b><br>
+    Tippe unten auf <span class="share">⬆︎</span> <b>Teilen</b>, dann
+    <b>„Zum Home-Bildschirm“</b> → <b>Hinzufügen</b>.<br>
+    Jedes Mal, wenn du das 🎉-Icon antippst, gibt's Konfetti!
+  </div>
+  <div class="hint" id="tapHint" style="display:none">Tipp irgendwo hin für noch mehr Konfetti 🎉</div>
+</div>
+
+<script>
+(function () {
+  const standalone = window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  let seen = false;
+  try { seen = localStorage.getItem('mia-seen') === '1'; } catch (e) {}
+
+  const greet = document.getElementById('greet');
+  if (!standalone) {                       // im Browser: Gruß + Anleitung
+    greet.classList.remove('hidden');
+    document.getElementById('install').style.display = '';
+  } else if (!seen) {                      // erster Start vom Home-Bildschirm: Gruß
+    greet.classList.remove('hidden');
+    document.getElementById('tapHint').style.display = '';
+    try { localStorage.setItem('mia-seen', '1'); } catch (e) {}
+  }                                        // danach: nur Konfetti
+
+  // ---------- Konfetti ----------
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  let W, H, DPR, dp;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    W = innerWidth; H = innerHeight; dp = Math.max(1, Math.min(W, H) / 390) * 1.0;
+    cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  resize(); addEventListener('resize', resize);
+
+  const COLORS = ['#FF5E94','#FFD600','#00C8FF','#7CFC00','#FF8C00','#BA55D3','#FFFFFF','#FF3B3B'];
+  const parts = [], emitters = [];
+  const R = (a, b) => a + Math.random() * (b - a);
+
+  function make(x, y, vx, vy, cannon) {
+    const shape = Math.floor(Math.random() * 3), w = R(6, 12) * dp;
+    parts.push({ x, y, vx, vy, w, h: shape === 0 ? w * .45 : w, shape,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      rot: R(0, 360), vrot: R(-10, 10), wob: R(0, 6.28), wobS: R(.05, .15),
+      drag: cannon ? R(.935, .96) : .985, maxFall: cannon ? R(2.2, 4) * dp : 7 * dp });
+  }
+
+  // Konfettikanone: strömt aus (x,y) Richtung Ziel, fliegt über den Bildschirm, rieselt dann
+  function cannon(x, y, tx, ty, count) {
+    emitters.push({ x, y, a: Math.atan2(ty - y, tx - x), frames: 14, per: Math.ceil(count / 14) });
+    kick();
+  }
+  function burst(x, y, count) {             // Explosion rundum (beim Tippen)
+    for (let i = 0; i < count; i++) {
+      const a = R(0, Math.PI * 2), s = R(6, 22) * dp;
+      make(x, y, Math.cos(a) * s, Math.sin(a) * s - 6 * dp, true);
+    }
+    kick();
+  }
+  function boom() {                          // Doppel-Kanone von unten links + rechts
+    cannon(-10, H + 10, W * .6, H * .05, 220);
+    cannon(W + 10, H + 10, W * .4, H * .05, 220);
+  }
+
+  let running = false, last = 0;
+  function kick() { if (!running) { running = true; last = 0; requestAnimationFrame(frame); } }
+  function frame(t) {
+    const dt = last ? Math.min(3, (t - last) / 16.667) : 1; last = t;
+    for (const e of emitters) {
+      if (e.frames-- <= 0) continue;
+      for (let i = 0; i < e.per; i++) {
+        const a = e.a + R(-.55, .55), s = R(22, 52) * dp;
+        make(e.x + R(-8, 8), e.y + R(-8, 8), Math.cos(a) * s, Math.sin(a) * s, true);
+      }
+    }
+    for (let i = emitters.length - 1; i >= 0; i--) if (emitters[i].frames <= 0) emitters.splice(i, 1);
+
+    ctx.clearRect(0, 0, W, H);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i], dr = Math.pow(p.drag, dt);
+      p.vx *= dr; if (p.vy < 0) p.vy *= dr;
+      p.vy = Math.min(p.vy + (p.maxFall < 7 * dp ? .22 : .35) * dp * dt, p.maxFall);
+      p.wob += p.wobS * dt;
+      p.x += (p.vx + Math.sin(p.wob) * 1.2 * dp) * dt; p.y += p.vy * dt; p.rot += p.vrot * dt;
+      if (p.y > H + 40) { parts.splice(i, 1); continue; }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.scale(.3 + .7 * Math.abs(Math.cos(p.wob * 2)), 1); ctx.fillStyle = p.color;
+      if (p.shape === 1) { ctx.beginPath(); ctx.arc(0, 0, p.w / 2.2, 0, 7); ctx.fill(); }
+      else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (parts.length || emitters.length) requestAnimationFrame(frame); else running = false;
+  }
+
+  // Start + jedes Mal, wenn die App wieder geöffnet wird (Icon antippen)
+  setTimeout(boom, 150);
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (Date.now() - hiddenAt > 300) boom();
+  });
+  addEventListener('pageshow', e => { if (e.persisted) boom(); });
+  addEventListener('pointerdown', e => burst(e.clientX, e.clientY, 120));
+})();
+</script>
+</body>
+</html>
