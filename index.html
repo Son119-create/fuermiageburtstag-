@@ -33,9 +33,13 @@
     margin: 10px 0 0; font-size: 44px; line-height: 1.08; font-weight: 900;
     text-shadow: 0 3px 12px rgba(0,0,0,.3); animation: pop .8s .15s cubic-bezier(.2,1.6,.4,1) both;
   }
+  .msg {
+    margin: 18px 0 0; max-width: 360px; font-size: 19px; line-height: 1.45; font-weight: 600;
+    text-shadow: 0 2px 10px rgba(0,0,0,.3); animation: pop .8s .3s cubic-bezier(.2,1.6,.4,1) both;
+  }
   .hint { margin-top: 36px; font-size: 15px; opacity: .85; text-shadow: 0 2px 8px rgba(0,0,0,.25); }
   .install {
-    margin-top: 32px; background: rgba(255,255,255,.18); border-radius: 22px; padding: 16px 18px;
+    margin-top: 26px; background: rgba(255,255,255,.18); border-radius: 22px; padding: 16px 18px;
     max-width: 340px; font-size: 15px; line-height: 1.5; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
   .install b { font-size: 16px; }
@@ -50,6 +54,8 @@
 <div class="page hidden" id="greet">
   <div class="cake">🎂</div>
   <h1>Happy Birthday,<br>Mia!</h1>
+  <p class="msg">Wir wünschen dir von Herzen alles Liebe zum 15.&nbsp;Geburtstag,
+    viel Glück 🍀 🎈🎊 und alles, was du dir selbst wünschst 💞🫶</p>
   <div class="install" id="install" style="display:none">
     <b>🎉 Hol dir die Konfettibombe!</b><br>
     Tippe unten auf <span class="share">⬆︎</span> <b>Teilen</b>, dann
